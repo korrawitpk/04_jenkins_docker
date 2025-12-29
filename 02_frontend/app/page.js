@@ -1,85 +1,89 @@
-"use client";
+'use client'
+import React, { useState, useEffect } from 'react';
 
-import { useState, useEffect } from "react";
-
-export default function Page() {
+export default function Home() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({ name: '', detail: '', coverimage: '' });
 
-  useEffect(() => {
-    async function getAttractions() {
-      try {
-        const apiHost = process.env.NEXT_PUBLIC_API_HOST;
-        const res = await fetch(`${apiHost}/attractions`, { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-        setRows(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  const apiHost = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:3001';
+
+  const getAttractions = async () => {
+    try {
+      const res = await fetch(`${apiHost}/attractions`);
+      const data = await res.json();
+      setRows(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    getAttractions();
-  }, []);
+  useEffect(() => { getAttractions(); }, []);
 
-  if (loading) {
-    return (
-      <main className="container">
-        <div className="empty">Loading...</div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="container">
-        <div className="empty">Error: {error}</div>
-      </main>
-    );
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${apiHost}/attractions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        alert("บันทึกสำเร็จ!");
+        setFormData({ name: '', detail: '', coverimage: '' });
+        getAttractions();
+      }
+    } catch (err) {
+      alert("เกิดข้อผิดพลาดในการบันทึก");
+    }
+  };
 
   return (
     <main className="container">
       <header className="header">
-        <h1 className="title">Seph Korrawit 6609119</h1>
-        <h1 className="title">Attractions</h1>
-        <p className="subtitle">Discover points of interest nearby</p>
+        <h1 className="title">Final Project: My Attractions</h1>
+        <p className="subtitle">6609119 - DIT312 CI/CD with Jenkins & Docker</p>
       </header>
 
-      {!rows || rows.length === 0 ? (
-        <div className="empty">No attractions found.</div>
-      ) : (
-        <section className="grid" aria-live="polite">
-          {rows.map((x) => (
-            <article key={x.id} className="card" tabIndex={0}>
-              {x.coverimage && (
-                <div className="media">
-                  <img
-                    src={x.coverimage}
-                    alt={x.name}
-                    className="img"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-              )}
+      {/* ฟอร์มเพิ่มข้อมูล (เพิ่มสไตล์ให้เข้ากับธีม) */}
+      <section style={{ marginBottom: '2rem', padding: '1.5rem', background: 'white', borderRadius: '14px', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>Add New Attraction</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1rem' }}>
+          <input type="text" placeholder="Name" required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+            value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+          <textarea placeholder="Detail" required style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '80px' }}
+            value={formData.detail} onChange={(e) => setFormData({...formData, detail: e.target.value})} />
+          <input type="text" placeholder="Image URL (https://...)" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+            value={formData.coverimage} onChange={(e) => setFormData({...formData, coverimage: e.target.value})} />
+          <button type="submit" style={{ background: '#2e7d32', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+            Save Attraction
+          </button>
+        </form>
+      </section>
+
+      {/* แสดงรายการการ์ด */}
+      <div className="grid">
+        {loading ? (
+          <div className="empty">Loading attractions...</div>
+        ) : rows.length === 0 ? (
+          <div className="empty">No attractions found. Try adding one!</div>
+        ) : (
+          rows.map((item) => (
+            <article key={item.id} className="card" tabIndex="0">
+              <div className="media">
+                <img src={item.coverimage || 'https://via.placeholder.com/400x225?text=No+Image'} alt={item.name} className="img" />
+              </div>
               <div className="body">
-                <h3 className="card-title">{x.name}</h3>
-                {x.detail && <p className="detail">{x.detail}</p>}
-                <div className="meta">
-                  <small>
-                    Lat: <span className="code">{x.latitude}</span> · Lng:{" "}
-                    <span className="code">{x.longitude}</span>
-                  </small>
-                </div>
+                <h3 className="card-title">{item.name}</h3>
+                <p className="detail">{item.detail}</p>
+                <div className="meta">ID: <span className="code">{item.id}</span></div>
               </div>
             </article>
-          ))}
-        </section>
-      )}
+          ))
+        )}
+      </div>
     </main>
   );
 }
